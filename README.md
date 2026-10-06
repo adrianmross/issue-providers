@@ -1,6 +1,6 @@
 # Optional issue providers
 
-Small, separately installed GitHub Issues, Linear and Jira providers for oscm and review-mode.nvim. Nothing here ships in either base tool. Python 3 is the only shared runtime dependency; no pip packages, daemon or background login are required. Executable entry points use Unix shebangs; Windows users can select Python explicitly through review-mode command configuration.
+Small, separately installed GitHub Issues, Linear and Jira providers for oscm and issues.nvim. Nothing here ships in either base tool. Python 3 is the only shared runtime dependency; no pip packages, daemon or background login are required. Executable entry points use Unix shebangs; Windows users can select Python explicitly through issues.nvim command configuration.
 
 ## Install only the tracker you need
 
@@ -14,22 +14,20 @@ oscm extension install adrianmross/issue-providers --name jira --subdir packages
 
 Installing clones the package and records its executable. It does not execute provider code, install Python packages, read credentials or activate any project. Upgrade and remove use the existing oscm extension commands. Pin a reviewed commit with `--pin COMMIT`.
 
-For Neovim, install `adrianmross/issue-providers` through your plugin manager and configure `review-mode.nvim` separately:
+For Neovim, install `adrianmross/issue-providers` through your plugin manager and configure `issues.nvim` separately:
 
 ```lua
-require("review_mode").setup({
-  issues = {
+require("issues").setup({
     projects = {
       ["/path/to/repository"] = {
         provider = "github",
         options = { repo = "owner/repository" },
       },
     },
-  },
 })
 ```
 
-This only loads the chosen adapter when an issue command is used. You can also install the Neovim modules with `oscm extension install adrianmross/issue-providers --name issue-plugins --apply`, then append the result of `oscm extension path issue-plugins` to your runtimepath.
+Install issues.nvim separately; the adapters do not depend on review-mode. This only loads the chosen adapter when an issue command is used. You can also install the Neovim modules with `oscm extension install adrianmross/issue-providers --name issue-plugins --apply`, then append the result of `oscm extension path issue-plugins` to your runtimepath.
 
 ## Provider configuration
 
@@ -51,7 +49,7 @@ Jira delegates caching to jira-queue's existing database and never creates a sec
 
 ## Shared contract
 
-Both hosts invoke an installed executable with `--request JSON`. Example:
+Any host can invoke an installed executable with `--request JSON`. Example:
 
 ```json
 {"schema":"issue-provider.request.v1","operation":"get","key":"ENG-123","options":{"target":"jira-oci"},"offline":true,"refresh":false}
@@ -72,3 +70,11 @@ python3 -m unittest -v
 ```
 
 Tests use fixtures and mock API calls only, covering cache isolation, offline reads, strict refresh behavior, canonical GitHub fields, Linear partial errors, and Jira delegation.
+
+## Package boundaries
+
+The executable adapters are usable without Neovim or oscm. Lua modules under issues.providers.NAME are optional wrappers for issues.nvim. Authentication and cache ownership remain in the adapter/underlying tool. review-mode contains no adapter code.
+
+Adapters currently share one source repository and stdlib helper; oscm selects a package with --subdir. The clone contains all sources, while only the selected entrypoint is used. Separate source repositories are not required for isolation and can follow if release ownership diverges.
+
+Until the initial PR is merged, pin codex/initial-issue-providers (or a reviewed commit) for installation; main contains only the repository bootstrap.

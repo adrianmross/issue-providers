@@ -30,6 +30,18 @@ class ProviderTests(unittest.TestCase):
             content = Path(directory, "snapshots.sqlite3").read_bytes()
             self.assertNotIn(b"session expired", content)
 
+    def test_actionable_auth_and_missing_tool_errors(self):
+        from types import SimpleNamespace
+        with patch("provider.subprocess.run", return_value=SimpleNamespace(returncode=1, stderr="Please run gh auth login", stdout="")):
+            with self.assertRaisesRegex(RuntimeError, "gh auth login"):
+                provider.command(["gh", "issue", "view", "1"])
+        with patch("provider.subprocess.run", side_effect=FileNotFoundError):
+            with self.assertRaisesRegex(RuntimeError, "required executable is missing"):
+                provider.command(["missing-tool"])
+        with patch("provider.subprocess.run", return_value=SimpleNamespace(returncode=1, stderr="session state is expired", stdout="")):
+            with self.assertRaisesRegex(RuntimeError, "refresh-session jira-oci"):
+                provider.command(["jira-queue", "issue", "view", "EX-1", "--target", "jira-oci"])
+
     def test_github_argv_and_normalization(self):
         raw = {"id": "I_1", "number": 1, "title": "Test", "body": "Details", "url": "https://github.com/owner/repo/issues/1", "state": "OPEN", "assignees": [{"login": "alice"}], "labels": [{"name": "bug"}]}
         with patch("provider.command", return_value=raw) as command:

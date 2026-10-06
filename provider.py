@@ -15,13 +15,18 @@ SCHEMA = "issue-provider.response.v1"
 
 
 def command(argv):
-    result = subprocess.run(argv, capture_output=True, text=True, timeout=45)
+    try:
+        result = subprocess.run(argv, capture_output=True, text=True, timeout=45)
+    except FileNotFoundError:
+        raise RuntimeError(f"required executable is missing: {Path(argv[0]).name}") from None
     if result.returncode:
         if "session state is expired" in result.stderr and "--target" in argv:
             target = argv[argv.index("--target") + 1]
             raise RuntimeError(f"Jira session expired; run refresh-session {target}")
         # CLI diagnostics can contain private response bodies; keep them out of caches.
-        raise RuntimeError(f"{Path(argv[0]).name} request failed; check its authentication separately")
+        if Path(argv[0]).name == "gh" and ("gh auth login" in result.stderr or "authentication" in result.stderr.lower()):
+            raise RuntimeError("GitHub authentication unavailable; run gh auth login for the configured host")
+        raise RuntimeError(f"{Path(argv[0]).name} request failed; check authentication, permissions and issue visibility")
     return json.loads(result.stdout)
 
 
